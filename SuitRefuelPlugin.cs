@@ -2,6 +2,7 @@
 using System.Linq;
 using UnityEngine;
 using System.Collections.Generic;
+using KSP.IO;
 
 namespace HuXTUS
 {
@@ -16,6 +17,8 @@ namespace HuXTUS
 	
 	public class SuitRefuel : ModuleColorChanger
 	{
+
+		PluginConfiguration cfg;
  
 		Vessel eva = null;
 		RefuelingState refuelingState = RefuelingState.NONE;
@@ -34,7 +37,7 @@ namespace HuXTUS
 		
 		readonly List<GameObject> listGofr = new List<GameObject>();
 		
-		[KSPEvent(guiActiveUnfocused = true, active = true, unfocusedRange = 35f, guiName = "Lol")]
+		[KSPEvent(guiActiveUnfocused = true, active = false, unfocusedRange = 35f, guiName = "Lol")]
 		public void Lol()
 		{
 
@@ -55,7 +58,9 @@ namespace HuXTUS
 		[KSPEvent(guiActiveUnfocused = true, active = true, unfocusedRange = 35f, guiName = "Settings")]
 		public void ShowSettings()
 		{
-			showSettings = true;
+			readConfig();
+			
+			showSettings = !showSettings;
 		}
 		
 	
@@ -63,7 +68,7 @@ namespace HuXTUS
 		[KSPEvent(guiActiveUnfocused = true, externalToEVAOnly = true, unfocusedRange = 1f, guiName = "Refuel suit")]
 		public void StartRefuelEvent()
 		{
-			
+
 			updateEva();
 			
 			if (eva == null)
@@ -118,6 +123,7 @@ namespace HuXTUS
 		
 		void onVesselChange(Vessel v)
 		{
+			showSettings = false;
 			
 			if (refuelingState != RefuelingState.NONE)
 				StopRefuelEvent();
@@ -126,8 +132,6 @@ namespace HuXTUS
 			updateEva();
 			
 			updateLEDs();
-			
-			
 		}
 		
 		void OnOff_LEDs(bool on)
@@ -192,9 +196,13 @@ namespace HuXTUS
 			
 			eva = v;
 			
+			readConfig();
+			
 			readEvaResources();
 			
 			updateLEDs();
+			
+			
 			
 		}
 		
@@ -231,7 +239,20 @@ namespace HuXTUS
 
 			foreach (var r in eva.Parts[0].Resources) {
 				listSettings.Add(new ResourceExchangeSetting(r));
-			} 
+			}
+
+			string strPumpings = cfg.GetValue<string>("pumpings");
+			if (strPumpings != null) {
+				var splitted = strPumpings.Split(new string[] { ",", ":" }, StringSplitOptions.None);
+				
+				for (int i = 0; i < splitted.Count() - 1; i += 2) {
+					var rname = splitted[i];
+					var s = listSettings.Find(x => x.res.resourceName.Equals(rname));
+					if (s != null)
+						s.pumping = (ResourcePumping)Enum.Parse(typeof(ResourcePumping), splitted[i + 1]);
+				}
+			}
+			
 		}
 
 		public override void  FixedUpdate()
@@ -267,7 +288,13 @@ namespace HuXTUS
 			if (refuelingState == RefuelingState.INIT) {
 				
 				foreach (var element in listGofr)
-					Destroy(element);				
+					Destroy(element);
+
+				foreach (var s in listSettings) {
+					s._stopped = false;
+					s._message = false;
+				}
+				
 			
 				listGofr.Clear();
 			
@@ -344,12 +371,7 @@ namespace HuXTUS
 				}
 
 				float deltaTimeAmount = TimeWarp.fixedDeltaTime;
-				
-				foreach (var s in listSettings) {
-					s._stopped = false;
-					s._message = false;
-				}
-				
+
 				bool stop = true;				
 				
 				foreach (var s in listSettings)
@@ -384,8 +406,18 @@ namespace HuXTUS
 								if (s._message)
 									ScreenMessages.PostScreenMessage(s.res.info.displayName + " completed", 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.GreenYellow;
 								good = false;
+								
+								idResource = (s.res.resourceName.GetHashCode() == idEvaPropellant) ? idMonoPropellant : idResource;
 								partFrom.RequestResource(idResource, -amount - profit);
-							}							
+							}
+
+							if (amount < (take / 10.0f)) {
+								if (s._message)
+									ScreenMessages.PostScreenMessage("Lack of " + s.res.info.displayName, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.RedPurple;
+								good = false;								
+							}
+
+							Debug.Log(s.res.resourceName + " amount: " + amount.ToString() + "  profit: " + profit);							
 							
 						}
 						
@@ -495,12 +527,10 @@ namespace HuXTUS
 				
 				windowPosition.height = 10;
 			
-				windowStyle.fixedWidth = 300;				
+				windowStyle.fixedWidth = 250;				
 			}
-			
 
 			windowPosition = GUILayout.Window(0, windowPosition, OnWindowSettings, "Suit Refuel Settings", windowStyle);
-					
 		}
 
 		readonly Texture texResourceIn = GameDatabase.Instance.GetTexture("SuitRefuelPlugin/Textures/resourceIn", false);
@@ -510,16 +540,15 @@ namespace HuXTUS
 
 		Texture textureByResourceSetting(ResourceExchangeSetting s)
 		{
-			
+
 			if (s.res.resourceName.GetHashCode() == idEvaPropellant)
 				return texResourceLockedIn;			 
 			
 			if (s.pumping == ResourcePumping.IN)
 				return texResourceIn;
 			if (s.pumping == ResourcePumping.OUT)
-				return texResourceOut;
-			
-				
+				return texResourceOut; 
+
 			return texResourceNothing;
 		}
 		
@@ -527,9 +556,13 @@ namespace HuXTUS
 		{
 			if (s.res.resourceName.GetHashCode() == idEvaPropellant)
 				return;
+			s._stopped = false;
+			s._message = true;
 			s.pumping++;
 			if (s.pumping > ResourcePumping.OUT)
 				s.pumping = ResourcePumping.NONE;
+			
+			saveSettings();
 		}
 		
 		public void OnWindowSettings(int windowId)
@@ -540,7 +573,7 @@ namespace HuXTUS
 				
 				GUILayout.BeginHorizontal();
 				
-				if (GUILayout.Button(textureByResourceSetting(s), HighLogic.Skin.box, GUILayout.Width(80)))
+				if (GUILayout.Button(textureByResourceSetting(s), HighLogic.Skin.box, GUILayout.Width(40)))
 					togglePumpSetting(s);
 				if (GUILayout.Button(s.res.info.displayName, HighLogic.Skin.label))
 					togglePumpSetting(s);
@@ -548,10 +581,37 @@ namespace HuXTUS
 				GUILayout.EndHorizontal();
 			}
 
+			if (GUILayout.Button("Hide", HighLogic.Skin.button)) {
+				showSettings = false;
+			}
+			
 			GUILayout.EndVertical();			
 			
 			GUI.DragWindow();
 			
+		}
+		
+		void readConfig()
+		{
+			
+			if (cfg != null)
+				return;
+			
+			cfg = PluginConfiguration.CreateForType<SuitRefuel>();
+			cfg.load();
+		}
+		
+		void saveSettings()
+		{
+			string pumpings = "";
+			foreach (var s in listSettings)
+				if (s.res.resourceName.GetHashCode() != idEvaPropellant)
+				if (s.pumping != ResourcePumping.NONE) {
+					pumpings += s.res.resourceName + ":" + s.pumping.ToString() + ",";
+				}
+			
+			cfg["pumpings"] = pumpings;
+			cfg.save();
 		}
 		
 	}
