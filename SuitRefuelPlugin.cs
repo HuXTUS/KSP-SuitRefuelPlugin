@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using KSP.Localization;
 using UnityEngine;
 using System.Collections.Generic;
 using KSP.IO;
@@ -26,8 +27,6 @@ namespace HuXTUS
 		static int idEvaPropellant = "EVA Propellant".GetHashCode();
 		static int idMonoPropellant = "MonoPropellant".GetHashCode();
 		
-		int puffIndex = -9;
-		
 		[KSPField(isPersistant = true)]
 		public bool ledOn = false;
 
@@ -40,42 +39,28 @@ namespace HuXTUS
 		[KSPEvent(guiActiveUnfocused = true, active = false, unfocusedRange = 35f, guiName = "Lol")]
 		public void Lol()
 		{
-
-			foreach (var part in eva.Parts) {
-				Debug.Log("part: ");
-				foreach (var r in part.Resources) {
-
-					
-					Debug.Log(r.resourceName + " " + r.maxAmount.ToString() + " " + r.amount.ToString() + " " + r.GetInfo() + " " + r.info.displayName);
-					
-				}
-				
-			} 
-			
 		}
 		
 		
-		[KSPEvent(guiActiveUnfocused = true, active = true, unfocusedRange = 35f, guiName = "Settings")]
+		[KSPEvent(guiActiveUnfocused = true, active = true, unfocusedRange = 35f, guiName = "#SuRePl_Event_Settings")]
 		public void ShowSettings()
 		{
-			readConfig();
+			ReadConfig();
 			
 			showSettings = !showSettings;
 		}
-		
-	
 
-		[KSPEvent(guiActiveUnfocused = true, externalToEVAOnly = true, unfocusedRange = 1f, guiName = "Refuel suit")]
+		[KSPEvent(guiActiveUnfocused = true, externalToEVAOnly = true, unfocusedRange = 1f, guiName = "#SuRePl_Event_Start_Refuel")]
 		public void StartRefuelEvent()
 		{
 
-			updateEva();
+			UpdateEva();
 			
 			if (eva == null)
 				return;
 			
-			if (!kerbalOnLadder()) {
-				ScreenMessages.PostScreenMessage("Turn jetpack off and grab the ladder!", 3.0f, ScreenMessageStyle.UPPER_CENTER);
+			if (!IsKerbalOnLadder()) {
+				ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_Error_Ladder"), 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.Red;
 				return;
 			}
 			
@@ -84,10 +69,10 @@ namespace HuXTUS
 			Events["StopRefuelEvent"].active = true;
 			
 			refuelingState = RefuelingState.INIT;
-			updateLEDs();
+			UpdateLEDs();
 		}
 
-		[KSPEvent(guiActiveUnfocused = true, externalToEVAOnly = true, unfocusedRange = 1f, active = false, guiName = "Stop refueling")]
+		[KSPEvent(guiActiveUnfocused = true, externalToEVAOnly = true, unfocusedRange = 1f, active = false, guiName = "#SuRePl_Event_Stop_Refuel")]
 		public void StopRefuelEvent()
 		{
 			Events["StartRefuelEvent"].active = true;
@@ -95,7 +80,7 @@ namespace HuXTUS
 			
 			refuelingState = RefuelingState.RECOVERY;
 			
-			updateLEDs();
+			UpdateLEDs();
 		}
 		
 		
@@ -103,9 +88,9 @@ namespace HuXTUS
 		{
 			base.OnStart(state);
 
-			updateEva();
+			UpdateEva();
 
-			GameEvents.onVesselChange.Add(onVesselChange);
+			GameEvents.onVesselChange.Add(OnVesselChange);
 			
 			Events["ToggleEvent"].active = false;
 			Events["ToggleEvent"].guiActive = false;
@@ -117,21 +102,21 @@ namespace HuXTUS
 		
 		public override void OnInactive()
 		{
-			GameEvents.onVesselChange.Remove(onVesselChange);
+			GameEvents.onVesselChange.Remove(OnVesselChange);
 		}
 		
 		
-		void onVesselChange(Vessel v)
+		void OnVesselChange(Vessel v)
 		{
 			showSettings = false;
 			
 			if (refuelingState != RefuelingState.NONE)
 				StopRefuelEvent();
-			///refuelingState = RefuelingState.RECOVERY;
+			//refuelingState = RefuelingState.RECOVERY;
 			
-			updateEva();
+			UpdateEva();
 			
-			updateLEDs();
+			UpdateLEDs();
 		}
 		
 		void OnOff_LEDs(bool on)
@@ -144,7 +129,7 @@ namespace HuXTUS
 		}
 		
 		
-		void updateLEDs()
+		void UpdateLEDs()
 		{
 
 			if (eva) {
@@ -154,14 +139,14 @@ namespace HuXTUS
 			}
 		
 			
-			updateLedRenderers();
+			UpdateLedRenderers();
 			
 			
 		}
 		
 		bool _needUpdateLedRenderers = false;
 		
-		void updateLedRenderers()
+		void UpdateLedRenderers()
 		{
 			_needUpdateLedRenderers = false;
 			
@@ -181,7 +166,7 @@ namespace HuXTUS
 
 		}
 		
-		void updateEva()
+		void UpdateEva()
 		{
 		
 			eva = null;
@@ -196,17 +181,15 @@ namespace HuXTUS
 			
 			eva = v;
 			
-			readConfig();
+			ReadConfig();
 			
-			readEvaResources();
+			ReadEvaResources();
 			
-			updateLEDs();
-			
-			
-			
+			UpdateLEDs();
+
 		}
 		
-		enum ResourcePumping
+		enum PumpingMode
 		{
 			NONE,
 			IN,
@@ -215,21 +198,21 @@ namespace HuXTUS
 		class ResourceExchangeSetting
 		{
 			public readonly PartResource res;
-			public  ResourcePumping pumping;
+			public  PumpingMode pumping;
 			public bool _stopped, _message;
 			
 			public ResourceExchangeSetting(PartResource r)
 			{
 				this.res = r;				
 				if (r.resourceName.GetHashCode() == idEvaPropellant)
-					pumping = ResourcePumping.IN;
+					pumping = PumpingMode.IN;
 			}
 			
 		}
 		
 		readonly List<ResourceExchangeSetting> listSettings = new List<ResourceExchangeSetting>();
 		
-		void readEvaResources()
+		void ReadEvaResources()
 		{
 			
 			if (listSettings.Any())
@@ -249,7 +232,7 @@ namespace HuXTUS
 					var rname = splitted[i];
 					var s = listSettings.Find(x => x.res.resourceName.Equals(rname));
 					if (s != null)
-						s.pumping = (ResourcePumping)Enum.Parse(typeof(ResourcePumping), splitted[i + 1]);
+						s.pumping = (PumpingMode)Enum.Parse(typeof(PumpingMode), splitted[i + 1]);
 				}
 			}
 			
@@ -261,11 +244,11 @@ namespace HuXTUS
 			
 			if (_needUpdateLedRenderers) {
 				Debug.Log("oh crap");
-				updateLedRenderers();
+				UpdateLedRenderers();
 			}
 
 			if (refuelingState != RefuelingState.NONE) {
-				processRefuel();
+				ProcessRefuel();
 			}
 
 			if (eva == null)
@@ -275,13 +258,11 @@ namespace HuXTUS
 		const float GOFR_STEP = 0.03f;
 		const float OK_DISTANCE_GOFR_TO_EVA = GOFR_STEP * 3f;
 		
-		void processRefuel()
+		void ProcessRefuel()
 		{
 
-			if ((eva != null) && eva.evaController.JetpackDeployed) {
-				ScreenMessages.PostScreenMessage("Refueling cancelled", 3.0f, ScreenMessageStyle.UPPER_CENTER);
+			if (!IsKerbalOnLadder()) {
 				StopRefuelEvent();
-				
 				return;
 			}
 			
@@ -294,8 +275,7 @@ namespace HuXTUS
 					s._stopped = false;
 					s._message = false;
 				}
-				
-			
+
 				listGofr.Clear();
 			
 				gofr = GameDatabase.Instance.GetModel("SuitRefuelPlugin/Parts/Gofr/model");
@@ -307,8 +287,7 @@ namespace HuXTUS
 				gofr.transform.rotation = plug.rotation;
 			
 				listGofr.Add(gofr);
-			
-			
+
 				refuelingState = RefuelingState.UNTWISTING;
 				
 			} else if (refuelingState == RefuelingState.UNTWISTING) {
@@ -357,15 +336,9 @@ namespace HuXTUS
 				}
 				
 			} else if (refuelingState == RefuelingState.REFUELING) {
+
 				
-				doPuff();
-				
-				if (!kerbalOnLadder()) {
-					StopRefuelEvent();
-					return;
-				}
-				
-				if (kerbalIsOutOfGofr()) {
+				if (KerbalIsOutOfGofr()) {
 					StopRefuelEvent();
 					return;
 				}
@@ -375,10 +348,10 @@ namespace HuXTUS
 				bool stop = true;				
 				
 				foreach (var s in listSettings)
-					if ((s.pumping != ResourcePumping.NONE) && (!s._stopped)) {
+					if ((s.pumping != PumpingMode.NONE) && (!s._stopped)) {
 					
 						Part partFrom, partTo;
-						if (s.pumping == ResourcePumping.IN) {
+						if (s.pumping == PumpingMode.IN) {
 							partFrom = this.part;
 							partTo = eva.Parts[0];						
 						} else {
@@ -396,7 +369,7 @@ namespace HuXTUS
 
 						if (amount <= part.resourceRequestRemainingThreshold) {
 							if (s._message)
-								ScreenMessages.PostScreenMessage("Lack of " + s.res.info.displayName, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.RedPurple;
+								ShowRefuelEndedMessage(s.res.info.displayName, s.pumping, false);
 							good = false;
 						} else {
 							idResource = (s.res.resourceName.GetHashCode() == idEvaPropellant) ? idEvaPropellant : idResource;
@@ -404,7 +377,8 @@ namespace HuXTUS
 							
 							if (-profit < amount) {
 								if (s._message)
-									ScreenMessages.PostScreenMessage(s.res.info.displayName + " completed", 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.GreenYellow;
+									ShowRefuelEndedMessage(s.res.info.displayName, s.pumping, true);
+									
 								good = false;
 								
 								idResource = (s.res.resourceName.GetHashCode() == idEvaPropellant) ? idMonoPropellant : idResource;
@@ -413,11 +387,9 @@ namespace HuXTUS
 
 							if (amount < (take / 10.0f)) {
 								if (s._message)
-									ScreenMessages.PostScreenMessage("Lack of " + s.res.info.displayName, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.RedPurple;
+									ShowRefuelEndedMessage(s.res.info.displayName, s.pumping, false);
 								good = false;								
 							}
-
-							Debug.Log(s.res.resourceName + " amount: " + amount.ToString() + "  profit: " + profit);							
 							
 						}
 						
@@ -444,53 +416,33 @@ namespace HuXTUS
 					
 				} else {
 					refuelingState = RefuelingState.NONE;
-					updateLEDs();
+					UpdateLEDs();
 				}
 				
 			}
 			
 		}
-		
-		//TODO: при переключении корабля очищать гофр, а то он торчит. А ещё start/stop обработать, а то название пункта меню портится
-		
-		void clearPuff()
-		{
-			foreach (var g in listGofr)
-				g.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
-		}
-		
-		
-		void doPuff()
-		{
-			
-			clearPuff();
-			
-			puffIndex++;
-			if (puffIndex >= listGofr.Count)
-				puffIndex -= listGofr.Count / 2;
-			
-			int currentIndex = puffIndex;
-			
-			do {
-			
-				for (int i = -5; i < 5; i++) {
-				
-					float newsize = 0.5f + ((8 - Math.Abs(i)) / 8f * 0.3f);
-				
-					int index = currentIndex + i;				
 
-					if (index >= 0 && index < listGofr.Count)
-						listGofr[index].transform.localScale = new Vector3(newsize, newsize, 0.5f);
-				}
+		void ShowRefuelEndedMessage(string resname, PumpingMode pump, bool isFull)
+		{
+
+			if (isFull) {
+				if (pump == PumpingMode.IN)
+					ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_EVA_FULL") + " " + resname, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.GreenYellow;
+				else
+					ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_SHIP_FULL") + " " + resname, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.Orange;					
 				
+			} else {
+				if (pump == PumpingMode.IN)
+					ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_SHIP_OUT_OF") + " " + resname, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.Red;
+				else
+					ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_EVA_OUT_OF") + " " + resname, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.Green;					
 				
-				currentIndex -= listGofr.Count / 2;
-				
-			} while (currentIndex > 0);
-			
+			}
+
 		}
-		
-		bool kerbalOnLadder()
+
+		bool IsKerbalOnLadder()
 		{
 			
 			if (eva == null)
@@ -506,7 +458,7 @@ namespace HuXTUS
 			
 		}
 		
-		bool kerbalIsOutOfGofr()
+		bool KerbalIsOutOfGofr()
 		{
 			return !(Vector3.Distance(gofr.transform.position, eva.transform.position) < OK_DISTANCE_GOFR_TO_EVA);
 		}
@@ -527,10 +479,10 @@ namespace HuXTUS
 				
 				windowPosition.height = 10;
 			
-				windowStyle.fixedWidth = 250;				
+				windowStyle.fixedWidth = 280;				
 			}
 
-			windowPosition = GUILayout.Window(0, windowPosition, OnWindowSettings, "Suit Refuel Settings", windowStyle);
+			windowPosition = GUILayout.Window(0, windowPosition, OnWindowSettings, Localizer.GetStringByTag("#SuRePl_Caption_Settings"), windowStyle);
 		}
 
 		readonly Texture texResourceIn = GameDatabase.Instance.GetTexture("SuitRefuelPlugin/Textures/resourceIn", false);
@@ -538,31 +490,31 @@ namespace HuXTUS
 		readonly Texture texResourceNothing = GameDatabase.Instance.GetTexture("SuitRefuelPlugin/Textures/resourceNothing", false);
 		readonly Texture texResourceLockedIn = GameDatabase.Instance.GetTexture("SuitRefuelPlugin/Textures/resourceLockedIn", false);
 
-		Texture textureByResourceSetting(ResourceExchangeSetting s)
+		Texture TextureByResourceSetting(ResourceExchangeSetting s)
 		{
 
 			if (s.res.resourceName.GetHashCode() == idEvaPropellant)
 				return texResourceLockedIn;			 
 			
-			if (s.pumping == ResourcePumping.IN)
+			if (s.pumping == PumpingMode.IN)
 				return texResourceIn;
-			if (s.pumping == ResourcePumping.OUT)
+			if (s.pumping == PumpingMode.OUT)
 				return texResourceOut; 
 
 			return texResourceNothing;
 		}
 		
-		void togglePumpSetting(ResourceExchangeSetting s)
+		void TogglePumpSetting(ResourceExchangeSetting s)
 		{
 			if (s.res.resourceName.GetHashCode() == idEvaPropellant)
 				return;
 			s._stopped = false;
 			s._message = true;
 			s.pumping++;
-			if (s.pumping > ResourcePumping.OUT)
-				s.pumping = ResourcePumping.NONE;
+			if (s.pumping > PumpingMode.OUT)
+				s.pumping = PumpingMode.NONE;
 			
-			saveSettings();
+			SaveSettings();
 		}
 		
 		public void OnWindowSettings(int windowId)
@@ -573,15 +525,15 @@ namespace HuXTUS
 				
 				GUILayout.BeginHorizontal();
 				
-				if (GUILayout.Button(textureByResourceSetting(s), HighLogic.Skin.box, GUILayout.Width(40)))
-					togglePumpSetting(s);
+				if (GUILayout.Button(TextureByResourceSetting(s), HighLogic.Skin.box, GUILayout.Width(40)))
+					TogglePumpSetting(s);
 				if (GUILayout.Button(s.res.info.displayName, HighLogic.Skin.label))
-					togglePumpSetting(s);
+					TogglePumpSetting(s);
 				
 				GUILayout.EndHorizontal();
 			}
 
-			if (GUILayout.Button("Hide", HighLogic.Skin.button)) {
+			if (GUILayout.Button(Localizer.GetStringByTag("#SuRePl_Hide_Settings"), HighLogic.Skin.button)) {
 				showSettings = false;
 			}
 			
@@ -591,7 +543,7 @@ namespace HuXTUS
 			
 		}
 		
-		void readConfig()
+		void ReadConfig()
 		{
 			
 			if (cfg != null)
@@ -601,12 +553,12 @@ namespace HuXTUS
 			cfg.load();
 		}
 		
-		void saveSettings()
+		void SaveSettings()
 		{
 			string pumpings = "";
 			foreach (var s in listSettings)
 				if (s.res.resourceName.GetHashCode() != idEvaPropellant)
-				if (s.pumping != ResourcePumping.NONE) {
+				if (s.pumping != PumpingMode.NONE) {
 					pumpings += s.res.resourceName + ":" + s.pumping.ToString() + ",";
 				}
 			
