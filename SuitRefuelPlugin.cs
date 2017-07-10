@@ -24,7 +24,7 @@ namespace HuXTUS
 		Vessel eva = null;
 		RefuelingState refuelingState = RefuelingState.NONE;
 		
-		static int idEvaPropellant = "EVA Propellant".GetHashCode();
+		readonly static int idEvaPropellant = "EVA Propellant".GetHashCode();
 		static int idMonoPropellant = "MonoPropellant".GetHashCode();
 		
 		[KSPField(isPersistant = true)]
@@ -41,8 +41,7 @@ namespace HuXTUS
 		{
 		}
 		
-		
-		[KSPEvent(guiActiveUnfocused = true, active = true, unfocusedRange = 35f, guiName = "#SuRePl_Event_Settings")]
+		[KSPEvent(guiActiveUnfocused = true, externalToEVAOnly = true, unfocusedRange = 35f, guiName = "#SuRePl_Event_Settings")]
 		public void ShowSettings()
 		{
 			ReadConfig();
@@ -63,7 +62,6 @@ namespace HuXTUS
 				ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_Error_Ladder"), 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.Red;
 				return;
 			}
-			
 
 			Events["StartRefuelEvent"].active = false;
 			Events["StopRefuelEvent"].active = true;
@@ -77,6 +75,8 @@ namespace HuXTUS
 		{
 			Events["StartRefuelEvent"].active = true;
 			Events["StopRefuelEvent"].active = false;
+			
+			Events["ShowSettings"].active = true;
 			
 			refuelingState = RefuelingState.RECOVERY;
 			
@@ -137,11 +137,9 @@ namespace HuXTUS
 			} else {
 				OnOff_LEDs(false);
 			}
-		
-			
+
 			UpdateLedRenderers();
-			
-			
+
 		}
 		
 		bool _needUpdateLedRenderers = false;
@@ -152,7 +150,7 @@ namespace HuXTUS
 			
 			try {
 				var rIdle = renderers.Find(x => x.gameObject.name.Equals("LedIdle"));
-				rIdle.enabled = eva && refuelingState == RefuelingState.NONE;
+				rIdle.enabled = eva /*&& refuelingState == RefuelingState.NONE*/;
 				
 				var rProcess = renderers.Find(x => x.gameObject.name.Equals("LedProcess"));
 				rProcess.enabled = refuelingState != RefuelingState.NONE;
@@ -238,9 +236,21 @@ namespace HuXTUS
 			
 		}
 
+		bool _needCheckScene = true;
+		
 		public override void  FixedUpdate()
 		{
 			base.FixedUpdate();
+			
+			if (_needCheckScene) {
+				_needCheckScene = false;
+				
+				if (HighLogic.LoadedSceneIsEditor)
+					OnOff_LEDs(true);
+				else
+					UpdateLEDs();
+				return;
+			}
 			
 			if (_needUpdateLedRenderers) {
 				Debug.Log("oh crap");
@@ -255,13 +265,13 @@ namespace HuXTUS
 				return;
 		}
 
-		const float GOFR_STEP = 0.03f;
+		const float GOFR_STEP = 0.028f;
 		const float OK_DISTANCE_GOFR_TO_EVA = GOFR_STEP * 3f;
 		
 		void ProcessRefuel()
 		{
 
-			if (!IsKerbalOnLadder()) {
+			if ((eva != null) && !IsKerbalOnLadder() && refuelingState != RefuelingState.RECOVERY) {
 				StopRefuelEvent();
 				return;
 			}
@@ -469,17 +479,18 @@ namespace HuXTUS
 		Rect windowPosition = new Rect(0, 0, 0, 0);
 		public void OnGUI()
 		{
-			
+
 			if (!showSettings)
 				return;
 			
 			if ((windowPosition.xMin <= 1) && (windowPosition.yMin <= 1)) {	
-				windowPosition.xMin = 500;
-				windowPosition.yMin = 500;
+				windowPosition.xMin = 300;
+				windowPosition.yMin = 300;
 				
 				windowPosition.height = 10;
 			
 				windowStyle.fixedWidth = 280;				
+ 
 			}
 
 			windowPosition = GUILayout.Window(0, windowPosition, OnWindowSettings, Localizer.GetStringByTag("#SuRePl_Caption_Settings"), windowStyle);
