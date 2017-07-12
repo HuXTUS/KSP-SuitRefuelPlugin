@@ -7,25 +7,11 @@ Forum discussion: http://forum.kerbalspaceprogram.com/index.php?/topic/163185-13
 
 
 
-![aa](https://i.yapx.ru/M37Y.gif)
-
-
-
-
-![bb](https://i.yapx.ru/M4H9.gif)
-
-
-
- 
-
+![](https://i.yapx.ru/M37Y.gif)
+![](https://i.yapx.ru/M4H9.gif)
 
 Compatible with other mods, for example Life Support:
 
+![](https://i.yapx.ru/M4Sa.gif) 
 
-
-![cc](https://i.yapx.ru/M4Sa.gif) 
-
-
-
-![dd](https://i.yapx.ru/M4S4.gif)
-
+![](https://i.yapx.ru/M4S4.gif)
