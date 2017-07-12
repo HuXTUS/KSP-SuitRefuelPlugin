@@ -11,6 +11,11 @@ Forum discussion: http://forum.kerbalspaceprogram.com/index.php?/topic/163185-13
 
 <br />
 
+![Part](https://i.yapx.ru/M4H9.gif)
+
+
+<br />
+
 
 ![Part](https://i.yapx.ru/M37Y.gif) 
 
@@ -19,10 +24,7 @@ Forum discussion: http://forum.kerbalspaceprogram.com/index.php?/topic/163185-13
 
 
 
-![Part](https://i.yapx.ru/M4H9.gif)
 
-
-<br />
 
 
 Compatible with other mods, for example Life Support:
