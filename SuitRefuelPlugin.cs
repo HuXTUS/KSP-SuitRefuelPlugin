@@ -253,7 +253,6 @@ namespace HuXTUS
 			}
 			
 			if (_needUpdateLedRenderers) {
-				Debug.Log("oh crap");
 				UpdateLedRenderers();
 			}
 
@@ -301,41 +300,30 @@ namespace HuXTUS
 				refuelingState = RefuelingState.UNTWISTING;
 				
 			} else if (refuelingState == RefuelingState.UNTWISTING) {
-				
-				
+
 				var node = Instantiate(gofr);
 				node.SetActive(true);
 				node.transform.parent = transform;
 				node.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
 				
 				if (listGofr.Count < 5) {
-
 					node.transform.rotation = gofr.transform.rotation;
 					node.transform.position = gofr.transform.position + gofr.transform.forward * GOFR_STEP;
 				} else if (listGofr.Count < 10) {
-
 					node.transform.position = gofr.transform.position + gofr.transform.forward * GOFR_STEP;
 					Vector3 targetDir = eva.transform.position - node.transform.position;
 					Vector3 newDir = Vector3.RotateTowards(gofr.transform.forward, targetDir, 0.03f, 0);
 					node.transform.rotation = Quaternion.LookRotation(newDir);
-					
-					
 				} else if (listGofr.Count < 20) {
-
 					node.transform.position = gofr.transform.position + gofr.transform.forward * GOFR_STEP;
 					Vector3 targetDir = eva.transform.position - node.transform.position;
 					Vector3 newDir = Vector3.RotateTowards(gofr.transform.forward, targetDir, 0.05f, 0);
 					node.transform.rotation = Quaternion.LookRotation(newDir);
-					
-
 				} else {
-					
 					node.transform.position = gofr.transform.position + gofr.transform.forward * GOFR_STEP;
-					
 					Vector3 targetDir = eva.transform.position - node.transform.position;
 					Vector3 newDir = Vector3.RotateTowards(gofr.transform.forward, targetDir, 0.06f, 0);
 					node.transform.rotation = Quaternion.LookRotation(newDir);
-					
 				}
 
 				gofr = node;
@@ -344,10 +332,9 @@ namespace HuXTUS
 				if ((listGofr.Count > 150) || ((listGofr.Count > 70) && (Vector3.Distance(gofr.transform.position, eva.transform.position) < OK_DISTANCE_GOFR_TO_EVA))) {
 					refuelingState = RefuelingState.REFUELING;
 				}
-				
+
 			} else if (refuelingState == RefuelingState.REFUELING) {
 
-				
 				if (KerbalIsOutOfGofr()) {
 					StopRefuelEvent();
 					return;
@@ -356,10 +343,10 @@ namespace HuXTUS
 				float deltaTimeAmount = TimeWarp.fixedDeltaTime;
 
 				bool stop = true;				
-				
+
 				foreach (var s in listSettings)
 					if ((s.pumping != PumpingMode.NONE) && (!s._stopped)) {
-					
+
 						Part partFrom, partTo;
 						if (s.pumping == PumpingMode.IN) {
 							partFrom = this.part;
@@ -368,11 +355,11 @@ namespace HuXTUS
 							partFrom = eva.Parts[0];
 							partTo = this.part;
 						}
-						
+
 						bool good = true;
 
 						float take = (float)s.res.maxAmount / 5.0f * deltaTimeAmount;
-						
+
 						int idResource = (s.res.resourceName.GetHashCode() == idEvaPropellant) ? idMonoPropellant : s.res.resourceName.GetHashCode();
  
 						float amount = partFrom.RequestResource(idResource, take);
@@ -384,13 +371,13 @@ namespace HuXTUS
 						} else {
 							idResource = (s.res.resourceName.GetHashCode() == idEvaPropellant) ? idEvaPropellant : idResource;
 							float profit = partTo.RequestResource(idResource, -amount);
-							
+
 							if (-profit < amount) {
 								if (s._message)
 									ShowRefuelEndedMessage(s.res.info.displayName, s.pumping, true);
-									
+
 								good = false;
-								
+
 								idResource = (s.res.resourceName.GetHashCode() == idEvaPropellant) ? idMonoPropellant : idResource;
 								partFrom.RequestResource(idResource, -amount - profit);
 							}
@@ -400,9 +387,9 @@ namespace HuXTUS
 									ShowRefuelEndedMessage(s.res.info.displayName, s.pumping, false);
 								good = false;								
 							}
-							
+
 						}
-						
+
 						if (!good)
 							s._stopped = true;
 						else {
@@ -411,26 +398,26 @@ namespace HuXTUS
 						}
 
 					}
-				
+
 				if (stop) {
 					StopRefuelEvent();
 					return;	
 				}
-				
+
 			} else if (refuelingState == RefuelingState.RECOVERY) {
-				
+
 				if (listGofr.Any()) {
 					var g = listGofr.Last();
 					Destroy(g);
 					listGofr.Remove(g);
-					
+
 				} else {
 					refuelingState = RefuelingState.NONE;
 					UpdateLEDs();
 				}
-				
+
 			}
-			
+
 		}
 
 		void ShowRefuelEndedMessage(string resname, PumpingMode pump, bool isFull)
@@ -441,20 +428,19 @@ namespace HuXTUS
 					ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_EVA_FULL") + " " + resname, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.GreenYellow;
 				else
 					ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_SHIP_FULL") + " " + resname, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.Orange;					
-				
+
 			} else {
 				if (pump == PumpingMode.IN)
 					ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_SHIP_OUT_OF") + " " + resname, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.Red;
 				else
 					ScreenMessages.PostScreenMessage(Localizer.GetStringByTag("#SuRePl_EVA_OUT_OF") + " " + resname, 3.0f, ScreenMessageStyle.UPPER_CENTER).color = XKCDColors.Green;					
-				
+
 			}
 
 		}
 
 		bool IsKerbalOnLadder()
 		{
-			
 			if (eva == null)
 				return false;
 			if (eva.evaController == null)
@@ -465,15 +451,13 @@ namespace HuXTUS
 				return false;
 			
 			return this.name.Equals(eva.evaController.LadderPart.name);
-			
 		}
-		
+
 		bool KerbalIsOutOfGofr()
 		{
 			return !(Vector3.Distance(gofr.transform.position, eva.transform.position) < OK_DISTANCE_GOFR_TO_EVA);
 		}
-		
-		
+
 		bool showSettings = false;
 		GUIStyle windowStyle = new GUIStyle(HighLogic.Skin.window);
 		Rect windowPosition = new Rect(0, 0, 0, 0);
@@ -482,13 +466,13 @@ namespace HuXTUS
 
 			if (!showSettings)
 				return;
-			
+
 			if ((windowPosition.xMin <= 1) && (windowPosition.yMin <= 1)) {	
 				windowPosition.xMin = 300;
 				windowPosition.yMin = 300;
-				
+
 				windowPosition.height = 10;
-			
+
 				windowStyle.fixedWidth = 280;				
  
 			}
@@ -503,7 +487,6 @@ namespace HuXTUS
 
 		Texture TextureByResourceSetting(ResourceExchangeSetting s)
 		{
-
 			if (s.res.resourceName.GetHashCode() == idEvaPropellant)
 				return texResourceLockedIn;			 
 			
@@ -514,7 +497,7 @@ namespace HuXTUS
 
 			return texResourceNothing;
 		}
-		
+
 		void TogglePumpSetting(ResourceExchangeSetting s)
 		{
 			if (s.res.resourceName.GetHashCode() == idEvaPropellant)
@@ -524,46 +507,44 @@ namespace HuXTUS
 			s.pumping++;
 			if (s.pumping > PumpingMode.OUT)
 				s.pumping = PumpingMode.NONE;
-			
+
 			SaveSettings();
 		}
-		
+
 		public void OnWindowSettings(int windowId)
 		{
 			GUILayout.BeginVertical();
-			
+
 			foreach (var s in listSettings) {
-				
+
 				GUILayout.BeginHorizontal();
-				
+
 				if (GUILayout.Button(TextureByResourceSetting(s), HighLogic.Skin.box, GUILayout.Width(40)))
 					TogglePumpSetting(s);
 				if (GUILayout.Button(s.res.info.displayName, HighLogic.Skin.label))
 					TogglePumpSetting(s);
-				
+
 				GUILayout.EndHorizontal();
 			}
 
 			if (GUILayout.Button(Localizer.GetStringByTag("#SuRePl_Hide_Settings"), HighLogic.Skin.button)) {
 				showSettings = false;
 			}
-			
+
 			GUILayout.EndVertical();			
-			
+
 			GUI.DragWindow();
-			
 		}
-		
+
 		void ReadConfig()
 		{
-			
 			if (cfg != null)
 				return;
-			
+
 			cfg = PluginConfiguration.CreateForType<SuitRefuel>();
 			cfg.load();
 		}
-		
+
 		void SaveSettings()
 		{
 			string pumpings = "";
@@ -572,12 +553,11 @@ namespace HuXTUS
 				if (s.pumping != PumpingMode.NONE) {
 					pumpings += s.res.resourceName + ":" + s.pumping.ToString() + ",";
 				}
-			
+
 			cfg["pumpings"] = pumpings;
 			cfg.save();
 		}
-		
+
 	}
-	
-	
+
 }
